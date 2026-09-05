@@ -1,137 +1,170 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var isConnected = false
-    @State private var usedTraffic: Double = 0
-    @State private var expirationDate = "—"
+@StateObject private var subscriptionManager = SubscriptionManager.shared
+@StateObject private var vpnManager = VPNManager.shared
 
-    var body: some View {
+var body: some View {
+    ZStack {
+        Color.black
+            .ignoresSafeArea()
+        ScrollView {
+            VStack(spacing: 24) {
+                header
+                connectionSection
+                trafficSection
+                subscriptionSection
+                if let error = subscriptionManager.errorMessage {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+            }
+            .padding()
+        }
+    }
+    .preferredColorScheme(.dark)
+    .task {
+        await subscriptionManager.loadSubscription()
+    }
+}
+private var header: some View {
+    HStack {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("ixxy")
+                .font(.system(size: 32, weight: .bold))
+            Text("VPN")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        Spacer()
+        Circle()
+            .fill(vpnManager.isConnected ? .green : .gray)
+            .frame(width: 10, height: 10)
+    }
+}
+private var connectionSection: some View {
+    VStack(spacing: 18) {
         ZStack {
-            Color.black
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("ixxy")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(.white)
-
-                        Text("VPN")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(.gray)
-                    }
-
-                    Spacer()
-
-                    Circle()
-                        .fill(isConnected ? .green : .gray)
-                        .frame(width: 10, height: 10)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-
-                Spacer()
-
-                VStack(spacing: 22) {
-                    ZStack {
-                        Circle()
-                            .stroke(
-                                isConnected ? Color.green.opacity(0.25) : Color.white.opacity(0.08),
-                                lineWidth: 18
-                            )
-                            .frame(width: 220, height: 220)
-
-                        Circle()
-                            .stroke(
-                                isConnected ? Color.green : Color.white.opacity(0.25),
-                                lineWidth: 3
-                            )
-                            .frame(width: 220, height: 220)
-
-                        VStack(spacing: 8) {
-                            Image(systemName: "bolt.shield.fill")
-                                .font(.system(size: 38))
-                                .foregroundStyle(isConnected ? .green : .white)
-
-                            Text(isConnected ? "Подключено" : "Отключено")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                    }
-
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            isConnected.toggle()
-                        }
-                    } label: {
-                        Text(isConnected ? "Отключить" : "Подключиться")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.black)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 58)
-                            .background(
-                                isConnected ? Color.white : Color.green,
-                                in: RoundedRectangle(cornerRadius: 18)
-                            )
-                    }
-                    .padding(.horizontal, 40)
-                }
-
-                Spacer()
-
-                VStack(spacing: 14) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Трафик")
-                                .foregroundStyle(.gray)
-                                .font(.system(size: 14))
-
-                            Text(String(format: "%.1f ГБ", usedTraffic))
-                                .foregroundStyle(.white)
-                                .font(.system(size: 18, weight: .semibold))
-                        }
-
-                        Spacer()
-
-                        VStack(alignment: .trailing, spacing: 5) {
-                            Text("Лимит")
-                                .foregroundStyle(.gray)
-                                .font(.system(size: 14))
-
-                            Text("Безлимит")
-                                .foregroundStyle(.green)
-                                .font(.system(size: 18, weight: .semibold))
-                        }
-                    }
-
-                    Divider()
-                        .overlay(Color.white.opacity(0.1))
-
-                    HStack {
-                        Text("Подписка до")
-                            .foregroundStyle(.gray)
-
-                        Spacer()
-
-                        Text(expirationDate)
-                            .foregroundStyle(.white)
-                            .fontWeight(.medium)
-                    }
-                }
-                .padding(20)
-                .background(
-                    Color.white.opacity(0.06),
-                    in: RoundedRectangle(cornerRadius: 22)
+            Circle()
+                .fill(
+                    vpnManager.isConnected
+                    ? Color.green.opacity(0.15)
+                    : Color.white.opacity(0.06)
                 )
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
+                .frame(width: 190, height: 190)
+            Image(systemName: "shield.fill")
+                .font(.system(size: 72))
+                .foregroundStyle(
+                    vpnManager.isConnected ? .green : .white
+                )
+        }
+        Text(vpnManager.isConnected ? "Подключено" : "Отключено")
+            .font(.title2.weight(.semibold))
+        Button {
+            Task {
+                if vpnManager.isConnected {
+                    vpnManager.disconnect()
+                } else {
+                    await vpnManager.connect()
+                }
+            }
+        } label: {
+            HStack {
+                if vpnManager.isLoading {
+                    ProgressView()
+                        .tint(.white)
+                }
+                Text(
+                    vpnManager.isConnected
+                    ? "Отключить"
+                    : "Подключиться"
+                )
+                .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                vpnManager.isConnected
+                ? Color.white.opacity(0.12)
+                : Color.green
+            )
+            .foregroundStyle(
+                vpnManager.isConnected ? .white : .black
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .disabled(vpnManager.isLoading)
+    }
+}
+private var trafficSection: some View {
+    VStack(alignment: .leading, spacing: 12) {
+        Text("Трафик")
+            .font(.headline)
+        HStack {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Использовано")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(
+                    String(
+                        format: "%.2f ГБ",
+                        subscriptionManager.subscription?.usedTrafficGB ?? 0
+                    )
+                )
+                .font(.title3.weight(.semibold))
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 5) {
+                Text("Лимит")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("Безлимит")
+                    .font(.title3.weight(.semibold))
             }
         }
-        .preferredColorScheme(.dark)
     }
+    .padding()
+    .background(Color.white.opacity(0.06))
+    .clipShape(RoundedRectangle(cornerRadius: 18))
+}
+private var subscriptionSection: some View {
+    VStack(alignment: .leading, spacing: 12) {
+        Text("Подписка")
+            .font(.headline)
+        HStack {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Статус")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(
+                    subscriptionManager.subscription?.active == true
+                    ? "Активна"
+                    : "Не активна"
+                )
+                .font(.body.weight(.semibold))
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 5) {
+                Text("До")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(
+                    subscriptionManager.subscription?.expirationText ?? "—"
+                )
+                .font(.body.weight(.semibold))
+            }
+        }
+    }
+    .padding()
+    .background(Color.white.opacity(0.06))
+    .clipShape(RoundedRectangle(cornerRadius: 18))
+}
+
 }
 
 #Preview {
-    ContentView()
+ContentView()
 }
