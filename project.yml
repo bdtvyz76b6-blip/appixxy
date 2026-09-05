@@ -1,0 +1,32 @@
+name: ixxyVPN
+options:
+  bundleIdPrefix: com.ixxyvpn
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  ixxyVPN:
+    type: application
+    platform: iOS
+    sources:
+      - path: ixxyVPN
+    entitlements:
+      path: ixxyVPN/ixxyVPN.entitlements
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.ixxyvpn.app
+      SWIFT_VERSION: "5.0"
+      GENERATE_INFOPLIST_FILE: YES
+      INFOPLIST_KEY_CFBundleDisplayName: ixxy VPN
+    dependencies:
+      - target: ixxyVPNExtension
+  ixxyVPNExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ixxyVPNExtension
+    info:
+      path: ixxyVPNExtension/Info.plist
+    entitlements:
+      path: ixxyVPNExtension/ixxyVPNExtension.entitlements
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.ixxyvpn.app.PacketTunnel
+      SWIFT_VERSION: "5.0"
