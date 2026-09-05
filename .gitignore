@@ -1,0 +1,16 @@
+.DS_Store
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+
+# Secrets
+.env
+*.secret
+Secrets.swift
